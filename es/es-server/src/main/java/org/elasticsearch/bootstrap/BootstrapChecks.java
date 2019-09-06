@@ -58,7 +58,7 @@ final class BootstrapChecks {
     private BootstrapChecks() {
     }
 
-    static final String ES_ENFORCE_BOOTSTRAP_CHECKS = "es.enforce.bootstrap.checks";
+    private static final String ES_ENFORCE_BOOTSTRAP_CHECKS = "es.enforce.bootstrap.checks";
 
     /**
      * Executes the bootstrap checks if the node has the transport protocol bound to a non-loopback interface. If the system property
@@ -395,8 +395,8 @@ final class BootstrapChecks {
 
         @Override
         public BootstrapCheckResult check(final Settings settings) {
-            // we only enforce the check if mmapfs is an allowed store type
-            if (IndexModule.NODE_STORE_ALLOW_MMAPFS.get(settings)) {
+            // we only enforce the check if a store is allowed to use mmap at all
+            if (IndexModule.NODE_STORE_ALLOW_MMAP.get(settings)) {
                 long maxMapCount = getMaxMapCount();
                 if (maxMapCount != -1 && maxMapCount < LIMIT) {
                     final String message = String.format(
