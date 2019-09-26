@@ -22,17 +22,18 @@
 
 package io.crate.expression.reference.sys.shard;
 
-import com.google.common.collect.Streams;
+import org.elasticsearch.cluster.routing.ShardRouting;
 import org.elasticsearch.common.inject.Inject;
 import org.elasticsearch.common.inject.Singleton;
+import org.elasticsearch.index.IndexService;
+import org.elasticsearch.index.engine.Segment;
 import org.elasticsearch.index.shard.IndexShard;
 import org.elasticsearch.index.shard.ShardId;
 import org.elasticsearch.indices.IndicesService;
 
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.stream.Stream;
-
-import static com.google.common.collect.Streams.stream;
+import java.util.List;
 
 @Singleton
 public class ShardSegments implements Iterable<ShardSegment> {
@@ -46,21 +47,18 @@ public class ShardSegments implements Iterable<ShardSegment> {
 
     @Override
     public Iterator<ShardSegment> iterator() {
-        return stream(indicesService)
-            .flatMap(Streams::stream)
-            .filter(x -> !x.routingEntry().unassigned())
-            .flatMap(this::buildShardSegment)
-            .iterator();
-    }
-
-    private Stream<ShardSegment> buildShardSegment(IndexShard indexShard) {
-        ShardId shardId = indexShard.shardId();
-        return indexShard
-            .segments(false)
-            .stream()
-            .map(sgmt -> new ShardSegment(shardId.getId(),
-                                          shardId.getIndexName(),
-                                          sgmt,
-                                          indexShard.routingEntry().primary()));
+        List<ShardSegment> result = new ArrayList<>();
+        for (IndexService indexService : indicesService) {
+            for (IndexShard indexShard : indexService) {
+                ShardId shardId = indexShard.shardId();
+                ShardRouting shardRouting = indexShard.routingEntry();
+                if (shardId != null && !shardRouting.unassigned()) {
+                    for (Segment segment : indexShard.segments(false)) {
+                        result.add(new ShardSegment(shardId.id(), shardId.getIndexName(), segment, shardRouting.primary()));
+                    }
+                }
+            }
+        }
+        return result.iterator();
     }
 }
